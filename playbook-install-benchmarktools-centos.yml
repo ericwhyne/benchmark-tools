@@ -1,0 +1,63 @@
+- hosts: master
+  remote_user: root
+  tasks:
+    - name: self identify master
+      lineinfile: dest=/root/master.txt line='I am the master' create=yes
+
+- hosts: slaves
+  remote_user: root
+  tasks:
+    - name: self identify slaves
+      lineinfile: dest=/root/slave.txt line='I am a slave' create=yes
+
+- hosts: all
+  remote_user: root
+  tasks:
+
+    - name: creat ssh directories
+      file: path=/root/.ssh state=directory
+
+    - name: put master key on all servers as id_rsa
+      copy: src=ansible.key.temp dest=/root/.ssh/id_rsa mode=0600
+
+    - name: put master pub key on all servers as id_rsa.pub
+      copy: src=ansible.key.temp.pub dest=/root/.ssh/id_rsa.pub mode=0600
+
+    - name: trust the master keys
+      authorized_key: user=root key="{{ lookup('file', 'ansible.key.temp.pub') }}"
+
+    - name: install rsync
+      yum: name=rsync state=latest
+
+    - name: install net-tools
+      yum: name=net-tools state=latest
+
+    - name: install openjdk
+      yum: name=java-1.8.0-openjdk-devel state=latest
+
+    - name: create hadoop user
+      user: name=hadoop
+
+    - name: creat hadoop user ssh directory
+      file: path=/home/hadoop/.ssh owner=hadoop state=directory
+
+    - name: put master pub key on all servers as id_rsa.pub
+      copy: src=ansible.key.temp.pub dest=/home/hadoop/.ssh/id_rsa.pub mode=0600
+
+    - name: trust the master keys as user hadoop
+      authorized_key: user=hadoop key="{{ lookup('file', 'ansible.key.temp.pub') }}"
+
+    - name: create data directory
+      file: path=/data state=directory mode=1777 owner=hadoop
+
+    - name: download hadoop
+      get_url: url=http://apache.claz.org/hadoop/core/hadoop-2.7.1/hadoop-2.7.1.tar.gz dest=/root/hadoop-2.7.1.tar.gz
+
+    - name: extract hadoop to /usr/local
+      unarchive: src=/root/hadoop-2.7.1.tar.gz copy=no dest=/usr/local/
+
+    - name: set hadoop symbolic link
+      file: state=link dest=/usr/local/hadoop src=/usr/local/hadoop-2.7.1
+
+    - name: set ownership of /usr/local/hadoop to hadoop user
+      file: path=/usr/local/hadoop-2.7.1 owner=hadoop

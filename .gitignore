@@ -1,0 +1,5 @@
+*.data
+*.key
+*.key.pub
+*.hosts
+*.temp
