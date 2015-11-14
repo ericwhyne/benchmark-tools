@@ -14,6 +14,14 @@
   remote_user: root
   tasks:
 
+    - name: update hosts file
+      lineinfile:
+        dest=/etc/hosts
+        regexp='{{ item }}.*$'
+        line="{{ item }} {{ hostvars[item].host_alias }}"
+        state=present
+      with_items: groups['all']
+
     - name: creat ssh directories
       file: path=/root/.ssh state=directory
 
@@ -29,6 +37,9 @@
     - name: install rsync
       yum: name=rsync state=latest
 
+    -name: install time
+      yum: name=time state=latest
+
     - name: install net-tools
       yum: name=net-tools state=latest
 
@@ -41,14 +52,17 @@
     - name: creat hadoop user ssh directory
       file: path=/home/hadoop/.ssh owner=hadoop state=directory
 
+    - name: put master key on all servers as id_rsa
+      copy: src=ansible.key.temp dest=/home/hadoop/.ssh/id_rsa owner=hadoop group=hadoop mode=0600
+
     - name: put master pub key on all servers as id_rsa.pub
-      copy: src=ansible.key.temp.pub dest=/home/hadoop/.ssh/id_rsa.pub mode=0600
+      copy: src=ansible.key.temp.pub dest=/home/hadoop/.ssh/id_rsa.pub owner=hadoop group=hadoop mode=0600
 
     - name: trust the master keys as user hadoop
       authorized_key: user=hadoop key="{{ lookup('file', 'ansible.key.temp.pub') }}"
 
     - name: create data directory
-      file: path=/data state=directory mode=1777 owner=hadoop
+      file: path=/data state=directory mode=1777 owner=hadoop group=hadoop
 
     - name: download hadoop
       get_url: url=http://apache.claz.org/hadoop/core/hadoop-2.7.1/hadoop-2.7.1.tar.gz dest=/root/hadoop-2.7.1.tar.gz
@@ -71,6 +85,36 @@
     - name: set yarn home
       lineinfile: state=present dest=/home/hadoop/.bash_profile line='YARN_HOME=$HADOOP_HOME'
     - name: set java home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.60-2.b27.el7_1.x86_64'
+      lineinfile: state=present dest=/home/hadoop/.bash_profile line='JAVA_HOME=/usr/lib/jvm/java'
+    - name: set java home in hadoop env
+      lineinfile: state=present create=yes dest=/usr/local/hadoop/etc/hadoop/hadoop-env.sh line='export JAVA_HOME=/usr/lib/jvm/java'
     - name: append hadoop home to path
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='PATH=$PATH:$HADOOP_HOME'
+      lineinfile: state=present dest=/home/hadoop/.bash_profile line='PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin'
+
+    - name: Copy hadoop files
+      copy: src=templates/{{item}} dest=/usr/local/hadoop/etc/hadoop/{{item}} owner=hadoop group=hadoop mode=0644
+      with_items:
+        - core-site.xml
+        - hdfs-site.xml
+        - mapred-site.xml
+        - yarn-site.xml
+
+- hosts: master
+  remote_user: root
+  tasks:
+    - name: write slaves file
+      lineinfile:
+        dest=/usr/local/hadoop/slaves
+        create=yes
+        regexp='{{ hostvars[item].host_alias }}'
+        line="{{ hostvars[item].host_alias }}"
+        state=present
+      with_items: groups['all']
+    - name: Copy init notes file
+      copy: src=templates/hadoop-init.txt dest=/home/hadoop/ owner=hadoop group=hadoop mode=0644
+    - name: Copy generate data script
+      copy: src=templates/generate-data.sh dest=/home/hadoop/ owner=hadoop group=hadoop mode=0744
+    - name: Copy terasort script
+      copy: src=templates/terasort.sh dest=/home/hadoop/ owner=hadoop group=hadoop mode=0744
+    - name: Copy teravalidate script
+      copy: src=templates/teravalidate.sh dest=/home/hadoop/ owner=hadoop group=hadoop mode=0744

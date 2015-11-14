@@ -1,3 +1,0 @@
-- hosts: master
-  remote_user: root
-  tasks:
