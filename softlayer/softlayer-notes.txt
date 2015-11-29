@@ -1,3 +1,4 @@
+Examples of provision commands:
 slcli vs create --datacenter=dal09 --domain=bdb.io --hostname=test1 --os=UBUNTU_14_64 --cpu=1 --memory=1024 --billing=hourly --key=my_default_id_rsa
 slcli vs create --datacenter=dal09 --domain=bdb.io --hostname=test2 --os=UBUNTU_14_64 --cpu=1 --memory=1024 --billing=hourly --key=my_default_id_rsa
 

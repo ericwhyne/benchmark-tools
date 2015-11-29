@@ -1,0 +1,25 @@
+#!/usr/bin/python
+import json
+import sys
+
+provisionfile="provision-data.json"
+
+data = json.load(open(provisionfile))
+try:
+    if sys.argv[1] == "all":
+        ids = []
+        for instance in data["Instances"]:
+            ids.append(instance["InstanceId"])
+        print " ".join(ids)
+
+    elif sys.argv[1] == "master":
+        print data["Instances"][0]["InstanceId"]
+
+    elif sys.argv[1] == "slaves":
+        ids = []
+        for instance in data["Instances"]:
+            ids.append(instance["InstanceId"])
+        print " ".join(ids[1:])
+
+except IndexError:
+    print "Usage:", sys.argv[0],"<all|master|slaves>"

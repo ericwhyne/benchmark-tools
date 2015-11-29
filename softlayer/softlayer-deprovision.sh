@@ -16,3 +16,6 @@ ssh-keygen -f "/home/eric/.ssh/known_hosts" -R $slave2id
 slcli -y vs cancel $masterid
 slcli -y vs cancel $slave1id
 slcli -y vs cancel $slave2id
+
+rm sl.hosts
+rm startbenchmark.sh

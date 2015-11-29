@@ -1,0 +1,39 @@
+#!/usr/bin/python
+import json
+import sys
+
+provisionfile="provision-data.json"
+provisiondata = json.load(open(provisionfile))
+
+descfile="instance-descriptions.json"
+descdata = json.load(open(descfile))
+
+# cat instance-descriptions.json | jq '.Reservations | .[].Instances | .[].PublicIpAddress'
+
+data = json.load(open(provisionfile))
+try:
+    if sys.argv[1] == "all":
+        ips = []
+        for res in descdata["Reservations"]:
+            for instance in res["Instances"]:
+                ips.append(instance['PublicIpAddress'])
+        print " ".join(ips)
+
+    elif sys.argv[1] == "master":
+        masterid = data["Instances"][0]["InstanceId"]
+        for res in descdata["Reservations"]:
+            for instance in res["Instances"]:
+                if instance["InstanceId"] == masterid:
+                    print instance["PublicIpAddress"]
+
+    elif sys.argv[1] == "slaves":
+        ips = []
+        masterid = data["Instances"][0]["InstanceId"]
+        for res in descdata["Reservations"]:
+            for instance in res["Instances"]:
+                if instance["InstanceId"] != masterid:
+                    ips.append(instance["PublicIpAddress"])
+        print " ".join(ips)
+
+except IndexError:
+    print "Usage:", sys.argv[0],"<all|master|slaves>"

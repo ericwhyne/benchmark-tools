@@ -1,0 +1,15 @@
+aws ec2 create-tags --resources ami-78a54011 --tags Key=Name,Value=benchmaster
+
+
+aws ec2 terminate-instances --instance-ids i-5203422c anotherid anotherid2
+
+kill the master
+aws ec2 terminate-instances --instance-ids `cat provision-data.json | jq '.Instances | .[0].InstanceId' | sed 's/"//g'`
+
+
+# get instance descriptions
+aws ec2 describe-instances --instance-ids `./aws-ids all`
+
+
+# all the ip addresses
+cat instance-descriptions.json | jq '.Reservations | .[].Instances | .[].PublicIpAddress'
