@@ -17,15 +17,18 @@
 - hosts: all
   remote_user: root
   tasks:
+    #line="{{ hostvars[item].private_ip }} {{ hostvars[item].host_alias }}"
     - name: update hosts file
       lineinfile:
         dest=/etc/hosts
-        regexp='{{ item }}.*$'
         line="{{ item }} {{ hostvars[item].host_alias }}"
         state=present
       with_items: groups['all']
 
-    # SSH pubkey stuff
+    - name: break StrictHostKeyChecking to allow automated provisioning
+      lineinfile: dest=/etc/ssh/ssh_config line="StrictHostKeyChecking no"
+
+    # SSH pubkey stuff for root
     - name: creat ssh directories
       file: path=/root/.ssh state=directory
     - name: put master key on all servers as id_rsa
@@ -55,6 +58,7 @@
       copy: src=ansible.key.temp.pub dest=/home/hadoop/.ssh/id_rsa.pub owner=hadoop group=hadoop mode=0600
     - name: trust the master keys as user hadoop
       authorized_key: user=hadoop key="{{ lookup('file', 'ansible.key.temp.pub') }}"
+
     - name: create data directory
       file: path=/data state=directory mode=1777 owner=hadoop group=hadoop
     - name: download hadoop
@@ -63,8 +67,8 @@
       unarchive: src=/root/hadoop-2.7.1.tar.gz copy=no dest=/usr/local/
     - name: set hadoop symbolic link
       file: state=link dest=/usr/local/hadoop src=/usr/local/hadoop-2.7.1
-    - name: set ownership of /usr/local/hadoop to hadoop user
-      file: path=/usr/local/hadoop-2.7.1 owner=hadoop
+    - name: set ownership of /usr/local/hadoop-2.7.1 to hadoop user
+      file: path=/usr/local/hadoop-2.7.1 owner=hadoop group=hadoop state=directory recurse=yes
     - name: set hadoop home
       lineinfile: state=present dest=/home/hadoop/.bash_profile line='HADOOP_HOME=/usr/local/hadoop'
     - name: set mapred home
@@ -92,18 +96,22 @@
   tasks:
     - name: write slaves file
       lineinfile:
-        dest=/usr/local/hadoop/slaves
+        dest=/usr/local/hadoop/etc/hadoop/slaves
         create=yes
         regexp='{{ hostvars[item].host_alias }}'
         line="{{ hostvars[item].host_alias }}"
         state=present
       with_items: groups['all']
+    - name: remove localhost from slaves file
+      lineinfile: dest=/usr/local/hadoop/etc/hadoop/slaves line='localhost' state=absent
+    - name: fix ownership of slaves file
+      file: path=/usr/local/hadoop/etc/hadoop/slaves owner=hadoop group=hadoop mode=0644
 
     # Copy files to master
     - name: Copy notes to master
       copy: src=templates/{{item}} dest=/home/hadoop/ owner=hadoop group=hadoop mode=0644
       with_items:
-        - hadoop-init.txt
+        - hadoop-notes.txt
 
     - name: Copy scripts to master
       copy: src=templates/{{item}} dest=/home/hadoop/ owner=hadoop group=hadoop mode=0744
@@ -113,3 +121,4 @@
         - teravalidate.sh
         - disk-performance.sh
         - transfer-test.sh
+        - hadoop-init.sh

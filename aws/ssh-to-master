@@ -1,0 +1,7 @@
+#!/bin/bash
+masterip=`./aws-ips master`
+if [ -z $masterip ]; then
+  echo "No master provisioned"
+  exit
+fi
+ssh root@$masterip

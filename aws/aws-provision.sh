@@ -31,17 +31,29 @@ aws ec2 describe-instances --instance-ids `./aws-ids all` > instance-description
 echo "IP addresses:"
 ./aws-ips all
 
-#TODO: make sure this works!!!
 # Generate ansible hosts file
 hostsfile=aws.hosts
 masterip=`./aws-ips master`
-SLAVES=(`./aws-ips slaves`)
+SlaveIps=(`./aws-ips slaves`)
+masterprivateip=`./aws-private-ips master`
+SlavePrivateIps=(`./aws-private-ips slaves`)
 echo "[master]" > $hostsfile
-echo "$masterip host_alias=benchmaster" >> $hostsfile
-hostnum=1
+echo "$masterip host_alias=benchmaster private_ip=$masterprivateip" >> $hostsfile
 echo "[slaves]" >> $hostsfile
-for slaveip in "${SLAVES[@]}"
+#for slaveip in "${SLAVES[@]}"
+for i in $(seq 1 ${#SlaveIps[@]})
 do
-  echo "$slaveip host_alias=benchslave$hostnum"  >> $hostsfile
-  let hostnum+=1
+  echo "${SlaveIps[$i - 1]} host_alias=benchslave$i private_ip=${SlavePrivateIps[$i - 1]}"  >> $hostsfile
 done
+
+# Generate hadoop links
+hadoopfile=hadoop.html
+echo "<html>" > $hadoopfile
+echo "<a href='http://$masterip:50070/dfshealth.html'>DFS Health</a><br>" >> $hadoopfile
+echo "<a href='http://$masterip:8088/cluster'>Cluster</a><br>" >> $hadoopfile
+echo "<a href='http://$masterip:19888/jobhistory'>Job History</a><br>" >> $hadoopfile
+echo "</html>" >> $hadoopfile
+
+# Run Ansible Playbooks
+export ANSIBLE_HOST_KEY_CHECKING=False
+ansible-playbook -i aws.hosts ../benchmarktools-centos.yml

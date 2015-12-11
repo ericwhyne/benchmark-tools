@@ -11,3 +11,5 @@ echo Transferring random data
 # note: time writes it's output to stderr, that's why we need to catch it and cat it
 seconds=`/usr/bin/time -f "%e" scp $user@$fromhost:~/random.data $user@$tohost:~/ |& cat`
 echo Transfer of $bytes bytes took $seconds seconds.
+
+filename=`date +%Y%m%dT%H%M%S%Z`
