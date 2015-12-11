@@ -69,20 +69,9 @@
       file: state=link dest=/usr/local/hadoop src=/usr/local/hadoop-2.7.1
     - name: set ownership of /usr/local/hadoop-2.7.1 to hadoop user
       file: path=/usr/local/hadoop-2.7.1 owner=hadoop group=hadoop state=directory recurse=yes
-    - name: set hadoop home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='HADOOP_HOME=/usr/local/hadoop'
-    - name: set mapred home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='HADOOP_MAPRED_HOME=$HADOOP_HOME'
-    - name: set hdfs home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='HADOOP_HDFS_HOME=$HADOOP_HOME'
-    - name: set yarn home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='YARN_HOME=$HADOOP_HOME'
-    - name: set java home
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='JAVA_HOME=/usr/lib/jvm/java'
+  
     - name: set java home in hadoop env
       lineinfile: state=present create=yes dest=/usr/local/hadoop/etc/hadoop/hadoop-env.sh line='export JAVA_HOME=/usr/lib/jvm/java'
-    - name: append hadoop home to path
-      lineinfile: state=present dest=/home/hadoop/.bash_profile line='PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin'
     - name: Copy hadoop files
       copy: src=templates/{{item}} dest=/usr/local/hadoop/etc/hadoop/{{item}} owner=hadoop group=hadoop mode=0644
       with_items:
@@ -90,6 +79,20 @@
         - hdfs-site.xml
         - mapred-site.xml
         - yarn-site.xml
+
+    # set environment variables
+    - name: set hadoop home
+      lineinfile: state=present dest=/etc/profile line='HADOOP_HOME=/usr/local/hadoop'
+    - name: set mapred home
+      lineinfile: state=present dest=/etc/profile line='HADOOP_MAPRED_HOME=$HADOOP_HOME'
+    - name: set hdfs home
+      lineinfile: state=present dest=/etc/profile line='HADOOP_HDFS_HOME=$HADOOP_HOME'
+    - name: set yarn home
+      lineinfile: state=present dest=/etc/profile line='YARN_HOME=$HADOOP_HOME'
+    - name: set java home
+      lineinfile: state=present dest=/etc/profile line='JAVA_HOME=/usr/lib/jvm/java'
+    - name: append hadoop home to path
+      lineinfile: state=present dest=/etc/profile line='PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin'
 
 - hosts: master
   remote_user: root

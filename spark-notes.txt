@@ -1,0 +1,9 @@
+To start Spark run
+
+$SPARK_HOME/sbin/start-master.sh
+
+Then view spark master user interface at: http://<master_ip>:8080/
+
+Then start the slaves
+
+$SPARK_HOME/sbin/start-slaves.sh

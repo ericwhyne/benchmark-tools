@@ -1,0 +1,66 @@
+- hosts: all
+  remote_user: root
+  tasks:
+    #line="{{ hostvars[item].private_ip }} {{ hostvars[item].host_alias }}"
+    - name: update hosts file
+      lineinfile:
+        dest=/etc/hosts
+        line="{{ item }} {{ hostvars[item].host_alias }}"
+        state=present
+      with_items: groups['all']
+
+    - name: break StrictHostKeyChecking to allow automated provisioning
+      lineinfile: dest=/etc/ssh/ssh_config line="StrictHostKeyChecking no"
+
+    # SSH pubkey stuff for root
+    - name: creat ssh directories
+      file: path=/root/.ssh state=directory
+    - name: put master key on all servers as id_rsa
+      copy: src=ansible.key.temp dest=/root/.ssh/id_rsa mode=0600
+    - name: put master pub key on all servers as id_rsa.pub
+      copy: src=ansible.key.temp.pub dest=/root/.ssh/id_rsa.pub mode=0600
+    - name: trust the master keys
+      authorized_key: user=root key="{{ lookup('file', 'ansible.key.temp.pub') }}"
+
+    - name: add scala build tool repo
+      get_url: url=https://bintray.com/sbt/rpm/rpm dest=/etc/yum.repos.d/bintray-sbt-rpm.repo validate_certs=no
+
+    # Dependencies
+    - name: install yum packages
+      yum: pkg={{item}} state=latest
+      with_items:
+        - sbt
+        - java-1.8.0-openjdk-devel
+
+    - name: download spark
+      get_url: url=http://d3kbcqa49mib13.cloudfront.net/spark-1.5.2-bin-hadoop2.6.tgz dest=/tmp/
+    - name: download and unpack spark
+      unarchive: src=/tmp/spark-1.5.2-bin-hadoop2.6.tgz dest=/usr/local/ copy=no
+
+    - name: set spark symbolic link
+      file: state=link dest=/usr/local/spark src=/usr/local/spark-1.5.2-bin-hadoop2.6
+
+    - name: set spark home in .bash_profile
+      lineinfile: state=present dest=/etc/profile line='SPARK_HOME=/usr/local/spark'
+
+    # configure spark to work with yarn
+    - name: set worker memory
+      lineinfile: create=yes state=present dest=/usr/local/spark/conf/spark-env.sh line='SPARK_WORKER_MEMORY=16G'
+    - name: set hadoop directory
+      lineinfile: state=present dest=/usr/local/spark/conf/spark-env.sh line='HADOOP_CONF_DIR=/usr/local/hadoop/etc/hadoop'
+    - name: set master ip
+      lineinfile: state=present dest=/usr/local/spark/conf/spark-env.sh line='SPARK_MASTER_IP=benchmaster'
+
+- hosts: master
+  remote_user: root
+  tasks:
+    - name: write slaves file
+      lineinfile:
+        dest=/usr/local/spark/conf/slaves
+        create=yes
+        regexp='{{ hostvars[item].host_alias }}'
+        line="{{ hostvars[item].host_alias }}"
+        state=present
+      with_items: groups['all']
+    - name: remove localhost from slaves file
+      lineinfile: dest=/usr/local/hadoop/etc/hadoop/slaves line='localhost' state=absent
